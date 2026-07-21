@@ -1,0 +1,16 @@
+# Node
+/node_modules
+pnpm-debug.log
+
+# IDEs and editors
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Local AI agent settings
+.claude/settings.local.json

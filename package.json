@@ -1,0 +1,67 @@
+{
+  "name": "starter-generator",
+  "version": "0.2.0",
+  "description": "Generate new applications from manifest-driven starter templates (angular-starter-web, angular-starter-ui, more tomorrow).",
+  "keywords": [
+    "starter",
+    "generator",
+    "template",
+    "scaffolding",
+    "angular"
+  ],
+  "homepage": "https://github.com/JoanRoucoux/starter-generator#readme",
+  "bugs": {
+    "url": "https://github.com/JoanRoucoux/starter-generator/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JoanRoucoux/starter-generator.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Joan Roucoux",
+    "email": "joan.roucoux@gmail.com"
+  },
+  "type": "module",
+  "bin": {
+    "starter-generator": "index.mjs"
+  },
+  "files": [
+    "index.mjs"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "packageManager": "pnpm@11.14.0+sha512.66c1ac4c7d4762d6d7dde44c7f3e5a73591ed0a0806e751d4ed32d4f004f25b2285a906b1fd8a9e3e621df3b4e2858bf88e50e0cf626bedbe977fe434a5caf85",
+  "lint-staged": {
+    "*.{mjs,js}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.7.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.1.0",
+    "prettier": "^3.9.5"
+  }
+}

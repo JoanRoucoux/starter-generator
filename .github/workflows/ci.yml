@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9 # v6.0.9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm run format:check
+
+      - name: Lint
+        run: pnpm run lint
+
+      # Structural smoke tests against the registered starters (their own CI runs
+      # the full quality gates on generated apps — see their `generate` jobs).
+      - name: Smoke test — generate from angular-starter-web
+        run: |
+          git clone --depth 1 https://github.com/JoanRoucoux/angular-starter-web "$RUNNER_TEMP/angular-starter-web"
+          node index.mjs "$RUNNER_TEMP/smoke-web" --template "$RUNNER_TEMP/angular-starter-web" --title "Smoke" --skip-install --skip-git --yes
+          test -f "$RUNNER_TEMP/smoke-web/src/app/features/smoke/smoke.routes.ts"
+          test -f "$RUNNER_TEMP/smoke-web/public/i18n/smoke/fr.json"
+          test ! -e "$RUNNER_TEMP/smoke-web/generator.config.json"
+          test ! -e "$RUNNER_TEMP/smoke-web/.generator"
+          test ! -e "$RUNNER_TEMP/smoke-web/src/app/features/home"
+          grep -q '"name": "smoke-web"' "$RUNNER_TEMP/smoke-web/package.json"
+
+      - name: Smoke test — generate from angular-starter-ui
+        run: |
+          git clone --depth 1 https://github.com/JoanRoucoux/angular-starter-ui "$RUNNER_TEMP/angular-starter-ui"
+          node index.mjs "$RUNNER_TEMP/smoke-ui" --template "$RUNNER_TEMP/angular-starter-ui" --title "Smoke" --skip-install --skip-git --yes
+          test -f "$RUNNER_TEMP/smoke-ui/projects/ui/src/lib/button/button.ts"
+          test ! -e "$RUNNER_TEMP/smoke-ui/generator.config.json"
+          test ! -e "$RUNNER_TEMP/smoke-ui/LICENSE"
+          grep -q '"name": "smoke-ui"' "$RUNNER_TEMP/smoke-ui/projects/ui/package.json"
+
+      - name: Smoke test — template without a manifest fails cleanly
+        run: |
+          if node index.mjs "$RUNNER_TEMP/smoke-invalid" --template "$RUNNER_TEMP" --skip-install --skip-git --yes; then
+            echo "Expected the generation to fail" && exit 1
+          fi
+          test ! -e "$RUNNER_TEMP/smoke-invalid"

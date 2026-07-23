@@ -41,8 +41,8 @@ starter-generator [directory] [options]
 starter-generator
 
 # Fully scripted
-starter-generator mandat-web --starter web --name mandat --title "Mandats" \
-  --openapi ../specs/mandat-api.yaml --yes
+starter-generator portfolio-web --starter web --name portfolio --title "Portfolio" \
+  --openapi ../specs/portfolio-api.yaml --yes
 
 # From an internal mirror, or a local checkout (offline / testing starter changes)
 starter-generator virement-web --template git@git.internal.bank:frontend/angular-starter-web.git

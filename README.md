@@ -111,3 +111,11 @@ Generation is one-shot: each application lives its own life afterwards. To pick 
 
 - Node ≥ 20.11
 - git, plus whatever the starter's `install` command needs (pnpm for `web`)
+
+## Contributing
+
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the contribution workflow and [CODE_OF_CONDUCT.md](.github/CODE_OF_CONDUCT.md) for community guidelines. To report a vulnerability, see [SECURITY.md](.github/SECURITY.md).
+
+## License
+
+This project is licensed under [MIT](LICENSE).

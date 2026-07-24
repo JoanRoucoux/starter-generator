@@ -12,26 +12,37 @@
  *   1. Pick a starter from the built-in registry (or --template <url|dir>).
  *   2. Fetch it (git clone, or copy of a local directory) and read its manifest.
  *   3. Ask the questions the starter declares (name, title, feature, OpenAPI spec).
- *   4. Apply the manifest: remove -> jsonPatch -> replace -> render templates.
+ *   4. Apply the manifest: remove -> rename -> jsonPatch -> replace -> replaceAll -> render templates.
  *   5. Install dependencies and create the first git commit.
  *
  * Usage:
  *   starter-generator [directory] [options]
  *
  * Options:
- *   --starter <id>          Starter from the registry (e.g. "web", "ui")
+ *   --starter <id>          Starter from the registry (e.g. "web", "ui", "java")
  *   --template <repo|dir>   Template git URL or local directory (overrides --starter)
  *   --ref <branch|tag>      Git ref to clone from the template repository
  *   --name <kebab-case>     Application name (default: directory name without the starter's suffix)
  *   --title <text>          Display title, used in the generated app's UI and README
  *   --feature <kebab-case>  Initial feature name, for starters that scaffold one
  *   --openapi <path|url>    OpenAPI spec, for starters that declare an openapiTarget
+ *   --base-package <pkg>    Base package (e.g. com.acme.payments), for starters that prompt for one
  *   --skip-install          Do not run the starter's install command
  *   --skip-git              Do not initialize a git repository
  *   --yes                   Non-interactive: accept defaults for unanswered options
  */
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import { exit, stdin } from 'node:process';
 import { parseArgs } from 'node:util';
@@ -50,13 +61,17 @@ const REGISTRY = {
     label: 'Angular design system (angular-starter-ui)',
     template: 'https://github.com/JoanRoucoux/angular-starter-ui.git',
   },
-  // java: { label: 'Java API (java-starter-api)', template: '...' } — later
+  java: {
+    label: 'Spring Boot API, hexagonal architecture (java-starter-api)',
+    template: 'https://github.com/JoanRoucoux/java-starter-api.git',
+  },
 };
 
 const MANIFEST_FILE = 'generator.config.json';
 const TEMPLATES_DIR = '.generator';
 const SUPPORTED_SCHEMA = 1;
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+const JAVA_PACKAGE = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9_]*)+$/;
 // Template files with these extensions are copied as-is, without token substitution.
 const BINARY_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.eot']);
 
@@ -96,6 +111,11 @@ const runGit = (gitArgs, cwd) => spawnSync('git', gitArgs, { cwd, stdio: 'pipe',
 // Manifest commands are trusted shell strings from the starter (whose code we run anyway).
 const runCommand = (command, cwd) => spawnSync(command, { cwd, stdio: 'inherit', shell: true });
 
+// A manifest command is either a string or an object keyed by process.platform with a
+// `default` fallback (e.g. {"default": "./mvnw ...", "win32": "mvnw.cmd ..."}).
+const resolveCommand = (command) =>
+  typeof command === 'string' ? command : (command[process.platform] ?? command.default);
+
 /** Replaces every `{{token}}` in `text`; warns once per unknown token. */
 const substituteTokens = (text, tokens, context) =>
   text.replace(/\{\{([a-zA-Z]+)\}\}/g, (match, name) => {
@@ -125,6 +145,7 @@ const { values: args, positionals } = parseArgs({
     title: { type: 'string' },
     feature: { type: 'string' },
     openapi: { type: 'string' },
+    'base-package': { type: 'string' },
     'skip-install': { type: 'boolean', default: false },
     'skip-git': { type: 'boolean', default: false },
     yes: { type: 'boolean', short: 'y', default: false },
@@ -298,6 +319,24 @@ if (feature !== undefined && !KEBAB_CASE.test(feature)) {
   fail(`Invalid feature name "${feature}": use kebab-case.`);
 }
 
+let basePackage = args['base-package'];
+if (prompts.includes('basePackage')) {
+  basePackage ??= `com.example.${appName.replaceAll('-', '')}`;
+  if (interactive && !args['base-package']) {
+    basePackage = checkCancel(
+      await p.text({
+        message: 'Base package (e.g. com.acme.payments)?',
+        initialValue: basePackage,
+        validate: (value) =>
+          JAVA_PACKAGE.test(value) ? undefined : 'Use a dotted lowercase package: at least two segments.',
+      }),
+    );
+  }
+}
+if (basePackage !== undefined && !JAVA_PACKAGE.test(basePackage)) {
+  fail(`Invalid base package "${basePackage}": use a dotted lowercase package (e.g. com.acme.payments).`);
+}
+
 let openapi = args.openapi;
 if (manifest.openapiTarget) {
   if (interactive && openapi === undefined) {
@@ -332,6 +371,10 @@ const tokens = {
     featureCamel: toCamelCase(feature),
     featureConst: feature.replaceAll('-', '_').toUpperCase(),
   }),
+  ...(basePackage !== undefined && {
+    basePackage,
+    basePackagePath: basePackage.replaceAll('.', '/'),
+  }),
 };
 
 // --- 6. Apply the manifest ---------------------------------------------------
@@ -340,6 +383,33 @@ spinner.start('Applying the starter manifest');
 
 for (const relative of manifest.remove ?? []) {
   rmSync(path.join(targetDir, relative), { recursive: true, force: true });
+}
+
+// Renames apply sequentially: each `from` sees the tree as left by the previous entries.
+// Both sides are token-substituted, so module directories and package roots can take the
+// application's name (`remove` above intentionally still uses literal repository paths).
+for (const rename of manifest.rename ?? []) {
+  const context = `${MANIFEST_FILE} rename`;
+  const from = substituteTokens(rename.from, tokens, context);
+  const to = substituteTokens(rename.to, tokens, context);
+  if (from === to) continue;
+  const fromPath = path.join(targetDir, from);
+  const toPath = path.join(targetDir, to);
+  if (!existsSync(fromPath)) {
+    p.log.warn(`rename source not found: ${from} — template drift?`);
+    continue;
+  }
+  if (existsSync(toPath)) {
+    p.log.warn(`rename target already exists: ${to} — template drift?`);
+    continue;
+  }
+  mkdirSync(path.dirname(toPath), { recursive: true });
+  renameSync(fromPath, toPath);
+  // Prune directories the move left empty (e.g. com/example/ after a package root rename).
+  for (let parent = path.dirname(fromPath); parent !== targetDir; parent = path.dirname(parent)) {
+    if (!existsSync(parent) || readdirSync(parent).length > 0) break;
+    rmSync(parent, { recursive: true });
+  }
 }
 
 const substituteDeep = (value, context) => {
@@ -378,6 +448,39 @@ for (const replacement of manifest.replace ?? []) {
     continue;
   }
   writeFileSync(filePath, content.replaceAll(replacement.search, substituteTokens(replacement.value, tokens, context)));
+}
+
+// Tree-wide literal replacement, for identities that appear in many files (Maven artifactIds,
+// Java package/import statements). Binary files, .git, the manifest and the scaffold templates
+// (whose {{tokens}} must survive until render) are never touched.
+const collectReplaceAllFiles = (dir, files = []) => {
+  for (const entry of readdirSync(dir)) {
+    if (entry === '.git' || entry === TEMPLATES_DIR || entry === MANIFEST_FILE) continue;
+    const entryPath = path.join(dir, entry);
+    if (statSync(entryPath).isDirectory()) {
+      collectReplaceAllFiles(entryPath, files);
+    } else if (!BINARY_EXTENSIONS.has(path.extname(entry).toLowerCase())) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+};
+if ((manifest.replaceAll ?? []).length > 0) {
+  const files = collectReplaceAllFiles(targetDir);
+  for (const replacement of manifest.replaceAll) {
+    const value = substituteTokens(replacement.value, tokens, `${MANIFEST_FILE} replaceAll`);
+    let touched = 0;
+    for (const filePath of files) {
+      if (replacement.extensions && !replacement.extensions.includes(path.extname(filePath).toLowerCase())) continue;
+      const content = readFileSync(filePath, 'utf8');
+      if (!content.includes(replacement.search)) continue;
+      writeFileSync(filePath, content.replaceAll(replacement.search, value));
+      touched += 1;
+    }
+    if (touched === 0 && !replacement.optional) {
+      p.log.warn(`replaceAll pattern not found anywhere: ${JSON.stringify(replacement.search)} — template drift?`);
+    }
+  }
 }
 
 // Render the scaffold templates over the target, overwriting existing files.
@@ -431,16 +534,18 @@ if (!args['skip-git']) {
 }
 
 let installOk = false;
+const installCommand = manifest.install ? resolveCommand(manifest.install) : undefined;
 if (install) {
-  p.log.step(`Installing dependencies (${manifest.install})...`);
-  installOk = runCommand(manifest.install, targetDir).status === 0;
+  p.log.step(`Installing dependencies (${installCommand})...`);
+  installOk = runCommand(installCommand, targetDir).status === 0;
   if (installOk) {
     for (const command of manifest.postInstall ?? []) {
-      p.log.step(`Running ${command}...`);
-      runCommand(command, targetDir);
+      const resolved = resolveCommand(command);
+      p.log.step(`Running ${resolved}...`);
+      runCommand(resolved, targetDir);
     }
   } else {
-    p.log.warn(`${manifest.install} failed — run it manually.`);
+    p.log.warn(`${installCommand} failed — run it manually.`);
   }
 }
 
@@ -461,7 +566,7 @@ if (!args['skip-git']) {
 
 const nextSteps = [
   `cd ${path.relative(process.cwd(), targetDir) || '.'}`,
-  ...(installOk || !manifest.install ? [] : [manifest.install]),
+  ...(installOk || !installCommand ? [] : [installCommand]),
   ...(manifest.nextSteps ?? []).map((step) => substituteTokens(step, tokens, `${MANIFEST_FILE} nextSteps`)),
 ];
 p.note(nextSteps.join('\n'), 'Next steps');

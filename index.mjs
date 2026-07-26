@@ -929,9 +929,18 @@ async function runAddModules() {
   // before recording it) — same detection as the initial generation, so local-checkout workflows
   // ("offline / testing starter changes") keep working for --add-modules too.
   if (existsSync(state.template)) {
+    // Read the manifest from the source so its own copyIgnore applies to the copy itself —
+    // otherwise a local checkout's build output (target/, .idea/, …) rides along into both
+    // reference trees and can surface as a bogus diff.
+    const { manifest: sourceManifest, error: sourceError } = readManifest(state.template, state.template);
+    if (sourceError) fail(sourceError);
+    const copyIgnore = ['.git', ...(sourceManifest.copyIgnore ?? [])];
     cpSync(state.template, templateClone, {
       recursive: true,
-      filter: (src) => path.basename(src) !== '.git',
+      filter: (src) => {
+        const relative = path.relative(state.template, src).replaceAll(path.sep, '/');
+        return !copyIgnore.some((ignored) => relative === ignored || relative.startsWith(`${ignored}/`));
+      },
     });
   } else {
     const clone = runGit(

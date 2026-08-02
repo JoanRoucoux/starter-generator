@@ -196,7 +196,7 @@ Generation is one-shot: each application lives its own life afterwards. To pick 
 ## Requirements
 
 - Node ≥ 20.11
-- git, plus whatever the starter's `install` command needs (pnpm for `web`/`ui`, a JDK 21 for `java`)
+- git, plus whatever the starter's `install` command needs (pnpm for `web`/`ui`, a JDK 25 for `java`)
 
 ## Contributing
 

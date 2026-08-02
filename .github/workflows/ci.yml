@@ -43,7 +43,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/JoanRoucoux/angular-starter-web "$RUNNER_TEMP/angular-starter-web"
           node index.mjs "$RUNNER_TEMP/smoke-web" --template "$RUNNER_TEMP/angular-starter-web" --title "Smoke" --skip-install --skip-git --yes
-          test -f "$RUNNER_TEMP/smoke-web/src/app/features/smoke/smoke.routes.ts"
+          test -f "$RUNNER_TEMP/smoke-web/src/app/features/smoke/smoke-routes.ts"
           test -f "$RUNNER_TEMP/smoke-web/public/i18n/smoke/fr.json"
           test ! -e "$RUNNER_TEMP/smoke-web/generator.config.json"
           test ! -e "$RUNNER_TEMP/smoke-web/.generator"

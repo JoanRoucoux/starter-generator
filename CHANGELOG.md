@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/JoanRoucoux/starter-generator/compare/v1.1.0...v1.1.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* keep mvnw executable in the generated repository ([030aa10](https://github.com/JoanRoucoux/starter-generator/commit/030aa101b540385bedf74939d70be776e69f5a08))
+* keep mvnw executable in the generated repository ([5c54c5b](https://github.com/JoanRoucoux/starter-generator/commit/5c54c5bd5bda4eaa9ba2c904cd592a993fb159a3))
+
 ## [1.1.0](https://github.com/JoanRoucoux/starter-generator/compare/v1.0.0...v1.1.0) (2026-08-02)
 
 

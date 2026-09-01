@@ -93,6 +93,11 @@ const TEMPLATES_DIR = '.generator';
 // describe the STARTER, this describes the GENERATION — so it belongs in the result.
 const STATE_FILE = '.starter-manifest.json';
 const SUPPORTED_SCHEMA = 1;
+// Build wrappers that must stay runnable on a Linux CI runner. Git on Windows does not track the
+// executable bit, so a template cloned or copied there yields mode 100644 and the generated
+// project's first CI run dies on `./mvnw: Permission denied`. A starter can name more files
+// through the manifest's optional `executable` array.
+const DEFAULT_EXECUTABLES = ['mvnw', 'gradlew'];
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const JAVA_PACKAGE = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9_]*)+$/;
 // Template files with these extensions are copied as-is, without token substitution.
@@ -131,6 +136,18 @@ const checkCancel = (value) => {
 
 // git commands carry user-provided values (paths, refs): run them without a shell.
 const runGit = (gitArgs, cwd) => spawnSync('git', gitArgs, { cwd, stdio: 'pipe', encoding: 'utf8' });
+
+/**
+ * Records the executable bit in the index for build wrappers, whatever the host filesystem said.
+ * Runs after `git add`, since `update-index` only speaks about files already staged.
+ */
+const markExecutables = (targetDir, manifest) => {
+  for (const relative of [...DEFAULT_EXECUTABLES, ...(manifest.executable ?? [])]) {
+    if (existsSync(path.join(targetDir, relative))) {
+      runGit(['update-index', '--chmod=+x', relative], targetDir);
+    }
+  }
+};
 // Manifest commands are trusted shell strings from the starter (whose code we run anyway).
 const runCommand = (command, cwd) => spawnSync(command, { cwd, stdio: 'inherit', shell: true });
 
@@ -867,6 +884,7 @@ async function runGenerate() {
   if (!args['skip-git']) {
     spinner.start('Creating the initial commit');
     runGit(['add', '-A'], targetDir);
+    markExecutables(targetDir, manifest);
     // The commit is machine-generated and the project freshly formatted:
     // hooks (lint-staged, commitlint) kick in from the first human commit.
     const versionSuffix = starterVersion ? ` v${starterVersion}` : '';

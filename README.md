@@ -108,6 +108,10 @@ Any entry of `rename`, `jsonPatch`, `replace`, `replaceAll` or `nextSteps` may c
     // "template drift" unless optional
     { "extensions": [".java", ".xml"], "search": "com.example.starter", "value": "{{basePackage}}" },
   ],
+  "executable": ["scripts/deploy.sh"], // extra files to stage with the executable bit; mvnw and
+  // gradlew are always included, because git on Windows
+  // does not track the bit and a Linux CI runner then
+  // fails with "./mvnw: Permission denied"
   "openapiTarget": "openapi/openapi.yaml", // where --openapi lands; omit if not applicable
   "install": "pnpm install", // install command (string, or platform-keyed object — see below)
   "postInstall": ["pnpm run format"], // commands run after a successful install

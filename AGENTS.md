@@ -38,6 +38,7 @@ Before considering a change done: generate one app per registered starter from a
 - Everything is written in **English** (code, comments, docs).
 - Keep it dependency-light: prefer `node:` builtins; a new dependency needs a strong reason.
 - `git` commands run **without a shell** (their arguments contain user input: paths, refs). Manifest commands (`install`, `postInstall`) run **through the shell** — they are trusted strings from the starter, whose code we execute anyway.
+- The initial commit stages `mvnw`/`gradlew` (plus any manifest `executable` entry) with `git update-index --chmod=+x`. Git on Windows does not track the executable bit, so without this a generated project's very first CI run fails with `./mvnw: Permission denied` — a bug that surfaces only on Linux, long after generation.
 - Every drift the engine can detect (missing `replace` pattern, missing `jsonPatch` target, unknown `{{token}}`) warns with the words "template drift" rather than failing: generation should survive minor starter evolution, visibly.
 
 ## Gotchas

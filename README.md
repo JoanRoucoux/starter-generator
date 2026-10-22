@@ -167,7 +167,7 @@ Files rendered over the generated app, overwriting existing files. The directory
 - **Content tokens**: `{{token}}` placeholders, plain substitution, no conditional logic. Exact match only, so Angular's `{{ interpolation }}` (with spaces) is left untouched.
 - Binary extensions (png, ico, fonts...) are copied as-is.
 
-Available tokens: `projectName` (directory name), `appName`, `title`, `starterVersion` (from the template's package.json, when present), plus, when the starter prompts for a feature: `feature`, `featurePascal`, `featureCamel`, `featureConst` (SNAKE_UPPER), plus, when it prompts for a base package: `basePackage` (`com.acme.portfolio`) and `basePackagePath` (`com/acme/portfolio`; token values may contain `/`, so a single `__basePackagePath__` path segment expands to a nested directory), plus, when it declares optional modules: `modules`.
+Available tokens: `projectName` (directory name), `appName`, `title` (raw, as typed), `titleJs` (inside a single-quoted JS or TS string), `titleJson` (inside a JSON string), `titleHtml` (HTML text or attribute), `starterVersion` (from the template's package.json, when present), plus, when the starter prompts for a feature: `feature`, `featurePascal`, `featureCamel`, `featureConst` (SNAKE_UPPER), plus, when it prompts for a base package: `basePackage` (`com.acme.portfolio`) and `basePackagePath` (`com/acme/portfolio`; token values may contain `/`, so a single `__basePackagePath__` path segment expands to a nested directory), plus, when it declares optional modules: `modules`.
 
 Because template files contain tokens, they are not valid syntax: the starter must exclude `.generator/templates/` from its own formatters/linters (see the starter's `.prettierignore` and ESLint `globalIgnores`).
 

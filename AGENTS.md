@@ -53,3 +53,4 @@ Before considering a change done: generate one app per registered starter from a
 - On Windows, never copy a `node_modules` installed by pnpm (junctions into the global store break); reinstall instead.
 - `applyManifest` only copies a local `--openapi` spec; a remote one is fetched by the caller (fetch is async) before `applyManifest` runs, so the `https?://` branch there is deliberately a no-op.
 - A local template is copied through the manifest's own `copyIgnore`, so build output never leaks into a generated tree or a `--add-modules` reference tree.
+- `{{title}}` is substituted raw. Any code, JSON or HTML context must use `{{titleJs}}`, `{{titleJson}}` or `{{titleHtml}}`, otherwise an apostrophe, a double quote or `&` in the title breaks the generated app.

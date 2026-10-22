@@ -44,6 +44,21 @@ const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const JAVA_PACKAGE = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9_]*)+$/;
 const BINARY_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.eot']);
 
+const escapeHtml = (text) =>
+  text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+const titleTokens = (title) => ({
+  title,
+  titleJs: title.replaceAll('\\', '\\\\').replaceAll("'", "\\'"),
+  titleJson: JSON.stringify(title).slice(1, -1),
+  titleHtml: escapeHtml(title),
+});
+
 const toPascalCase = (kebab) =>
   kebab
     .split('-')
@@ -680,7 +695,7 @@ async function runGenerate() {
   const tokens = {
     projectName,
     appName,
-    title,
+    ...titleTokens(title),
     starterVersion,
     ...(feature !== undefined && {
       feature,
@@ -844,7 +859,7 @@ async function runAddModules() {
   const baseTokens = {
     projectName: path.basename(targetDir),
     appName: state.tokens.appName,
-    title: state.tokens.title,
+    ...titleTokens(state.tokens.title),
     starterVersion: '',
     ...(state.tokens.feature !== undefined && {
       feature: state.tokens.feature,

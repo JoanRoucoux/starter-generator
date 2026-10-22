@@ -1,4 +1,6 @@
-# starter-generator
+<img src=".github/assets/banner.png" alt="Starter Generator: generate new applications from starter templates" />
+<br>
+<br>
 
 Generate new applications from manifest-driven starter templates.
 

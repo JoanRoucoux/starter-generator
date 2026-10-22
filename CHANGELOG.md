@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/JoanRoucoux/starter-generator/compare/v1.1.1...v1.2.0) (2026-10-22)
+
+
+### Features
+
+* add escaped title tokens for code, JSON and HTML ([4ae771d](https://github.com/JoanRoucoux/starter-generator/commit/4ae771d6b02a799ead0e394ddd18c3175f8ab320))
+
 ## [1.1.1](https://github.com/JoanRoucoux/starter-generator/compare/v1.1.0...v1.1.1) (2026-09-01)
 
 

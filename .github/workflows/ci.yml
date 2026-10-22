@@ -37,9 +37,7 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
-      # Structural smoke tests against the registered starters (their own CI runs
-      # the full quality gates on generated apps — see their `generate` jobs).
-      - name: Smoke test — generate from angular-starter-web
+      - name: Smoke test (generate from angular-starter-web)
         run: |
           git clone --depth 1 https://github.com/JoanRoucoux/angular-starter-web "$RUNNER_TEMP/angular-starter-web"
           node index.mjs "$RUNNER_TEMP/smoke-web" --template "$RUNNER_TEMP/angular-starter-web" --title "Smoke" --skip-install --skip-git --yes
@@ -50,7 +48,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/smoke-web/src/app/features/home"
           grep -q '"name": "smoke-web"' "$RUNNER_TEMP/smoke-web/package.json"
 
-      - name: Smoke test — generate from angular-starter-ui
+      - name: Smoke test (generate from angular-starter-ui)
         run: |
           git clone --depth 1 https://github.com/JoanRoucoux/angular-starter-ui "$RUNNER_TEMP/angular-starter-ui"
           node index.mjs "$RUNNER_TEMP/smoke-ui" --template "$RUNNER_TEMP/angular-starter-ui" --title "Smoke" --skip-install --skip-git --yes
@@ -59,7 +57,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/smoke-ui/LICENSE"
           grep -q '"name": "smoke-ui"' "$RUNNER_TEMP/smoke-ui/projects/ui/package.json"
 
-      - name: Smoke test — template without a manifest fails cleanly
+      - name: Smoke test (template without a manifest fails cleanly)
         run: |
           if node index.mjs "$RUNNER_TEMP/smoke-invalid" --template "$RUNNER_TEMP" --skip-install --skip-git --yes; then
             echo "Expected the generation to fail" && exit 1

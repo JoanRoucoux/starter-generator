@@ -5,10 +5,10 @@
 Generate new applications from manifest-driven starter templates.
 
 ```bash
-starter-generator virement-web
+starter-generator catalog-web
 ```
 
-The generator itself knows nothing about any specific starter: each starter repository **describes itself** through a `generator.config.json` manifest and `.generator/templates/` scaffold files. The generator is a generic engine that fetches a starter, applies its manifest, and bootstraps the result (git, install, first commit). Adding a new starter (e.g. a Java API starter) means adding a manifest to that repository and one line to the registry — no engine changes.
+The generator itself knows nothing about any specific starter: each starter repository **describes itself** through a `generator.config.json` manifest and `.generator/templates/` scaffold files. The generator is a generic engine that fetches a starter, applies its manifest, and bootstraps the result (git, install, first commit). Adding a new starter (e.g. a Java API starter) means adding a manifest to that repository and one line to the registry: no engine changes.
 
 ## Registered starters
 
@@ -24,21 +24,21 @@ The generator itself knows nothing about any specific starter: each starter repo
 starter-generator [directory] [options]
 ```
 
-| Option                   | Description                                                                                |
-| ------------------------ | ------------------------------------------------------------------------------------------ |
-| `--starter <id>`         | Starter from the registry (prompted if omitted)                                            |
-| `--template <repo\|dir>` | Template git URL or local directory (overrides `--starter`)                                |
-| `--ref <branch\|tag>`    | Git ref to clone from the template repository                                              |
-| `--name <kebab-case>`    | Application name (default: directory name without `-web`)                                  |
-| `--title <text>`         | Display title, used in the generated app's UI and README                                   |
-| `--feature <kebab-case>` | Initial feature name (default: application name)                                           |
-| `--openapi <path\|url>`  | OpenAPI spec copied into the starter's declared `openapiTarget`                            |
-| `--base-package <pkg>`   | Base package (e.g. `com.acme.payments`), for starters that prompt for one                  |
-| `--modules <a,b>`        | Optional modules to include (`""` for none), for starters that declare some                |
-| `--skip-install`         | Do not run the starter's install command                                                   |
-| `--skip-git`             | Do not initialize a git repository                                                         |
-| `--yes` / `-y`           | Non-interactive: accept defaults for anything not provided as a flag                       |
-| `--add-modules <a,b>`    | Add modules to the application at `[directory]` — see below; every other option is ignored |
+| Option                   | Description                                                                               |
+| ------------------------ | ----------------------------------------------------------------------------------------- |
+| `--starter <id>`         | Starter from the registry (prompted if omitted)                                           |
+| `--template <repo\|dir>` | Template git URL or local directory (overrides `--starter`)                               |
+| `--ref <branch\|tag>`    | Git ref to clone from the template repository                                             |
+| `--name <kebab-case>`    | Application name (default: directory name without `-web`)                                 |
+| `--title <text>`         | Display title, used in the generated app's UI and README                                  |
+| `--feature <kebab-case>` | Initial feature name (default: application name)                                          |
+| `--openapi <path\|url>`  | OpenAPI spec copied into the starter's declared `openapiTarget`                           |
+| `--base-package <pkg>`   | Base package (e.g. `com.acme.portfolio`), for starters that prompt for one                |
+| `--modules <a,b>`        | Optional modules to include (`""` for none), for starters that declare some               |
+| `--skip-install`         | Do not run the starter's install command                                                  |
+| `--skip-git`             | Do not initialize a git repository                                                        |
+| `--yes` / `-y`           | Non-interactive: accept defaults for anything not provided as a flag                      |
+| `--add-modules <a,b>`    | Add modules to the application at `[directory]`, see below; every other option is ignored |
 
 ### Examples
 
@@ -58,23 +58,23 @@ starter-generator portfolio --starter java --base-package com.acme.portfolio \
 starter-generator portfolio --starter java --base-package com.acme.portfolio --modules "" --yes
 
 # From an internal mirror, or a local checkout (offline / testing starter changes)
-starter-generator virement-web --template git@git.internal.bank:frontend/angular-starter-web.git
-starter-generator virement-web --template ../angular-starter-web
+starter-generator catalog-web --template git@git.example.com:frontend/angular-starter-web.git
+starter-generator catalog-web --template ../angular-starter-web
 ```
 
-Without publishing to a registry, run it directly: `node starter-generator/index.mjs virement-web`.
+Without publishing to a registry, run it directly: `node starter-generator/index.mjs catalog-web`.
 
 ## How a generation works
 
-1. **Fetch** — `git clone --depth 1` of the starter repository, or a filtered copy when `--template` points to a local directory (`copyIgnore`).
-2. **Validate** — the starter must contain a `generator.config.json` with a supported `schema`; clear error otherwise.
-3. **Ask** — name and title always; the feature and base-package prompts only if the starter lists them in `prompts`; the module checklist only if it declares optional `modules`; the OpenAPI prompt only if it declares an `openapiTarget`.
-4. **Apply the manifest, in order** — `remove` (plus the `whenAbsent.remove` of every module left out) → `rename` → `jsonPatch` → `replace` → `replaceAll` → render `.generator/templates/` and the `whenAbsent.templates` tree of every module left out (overwriting existing files) → resolve the module `markers` → copy the `--openapi` spec to `openapiTarget` → delete `generator.config.json` and `.generator/` from the result.
-5. **Bootstrap** — `git init -b main`, the starter's `install` command, its `postInstall` commands, then an initial commit (`--no-verify`: the project is freshly formatted, hooks apply from the first human commit).
+1. **Fetch**: `git clone --depth 1` of the starter repository, or a filtered copy when `--template` points to a local directory (`copyIgnore`).
+2. **Validate**: the starter must contain a `generator.config.json` with a supported `schema`; clear error otherwise.
+3. **Ask**: name and title always; the feature and base-package prompts only if the starter lists them in `prompts`; the module checklist only if it declares optional `modules`; the OpenAPI prompt only if it declares an `openapiTarget`.
+4. **Apply the manifest, in order**: `remove` (plus the `whenAbsent.remove` of every module left out) -> `rename` -> `jsonPatch` -> `replace` -> `replaceAll` -> render `.generator/templates/` and the `whenAbsent.templates` tree of every module left out (overwriting existing files) -> resolve the module `markers` -> copy the `--openapi` spec to `openapiTarget` -> delete `generator.config.json` and `.generator/` from the result.
+5. **Bootstrap**: `git init -b main`, the starter's `install` command, its `postInstall` commands, then an initial commit (`--no-verify`: the project is freshly formatted, hooks apply from the first human commit).
 
 ## Manifest specification (`generator.config.json`, schema 1)
 
-Everything is optional except `schema`. From `rename` onward, both paths and values support `{{token}}` substitution — `remove` (and `whenAbsent.remove`) are the exception: they run before any rename and take literal repository paths.
+Everything is optional except `schema`. From `rename` onward, both paths and values support `{{token}}` substitution. `remove` (and `whenAbsent.remove`) are the exception: they run before any rename and take literal repository paths.
 
 Any entry of `rename`, `jsonPatch`, `replace`, `replaceAll` or `nextSteps` may carry a `"module": "<id>"` field: it then applies only when that module made it into the generated application, instead of warning about a path that is legitimately gone.
 
@@ -85,7 +85,7 @@ Any entry of `rename`, `jsonPatch`, `replace`, `replaceAll` or `nextSteps` may c
   "nameSuffix": "-web", // stripped from the directory name to derive the default app name
   "prompts": ["feature"], // extra prompts this starter needs ("feature" and "basePackage" exist today)
   "modules": {
-    // parts of the starter the user can leave out — see below
+    // parts of the starter the user can leave out, see below
     "required": ["api", "core"], // informational: never removable, listed in the prompt and {{modules}}
     "optional": [{ "id": "schema", "default": true, "markers": [], "whenAbsent": {} }],
   },
@@ -115,9 +115,9 @@ Any entry of `rename`, `jsonPatch`, `replace`, `replaceAll` or `nextSteps` may c
   // does not track the bit and a Linux CI runner then
   // fails with "./mvnw: Permission denied"
   "openapiTarget": "openapi/openapi.yaml", // where --openapi lands; omit if not applicable
-  "install": "pnpm install", // install command (string, or platform-keyed object — see below)
+  "install": "pnpm install", // install command (string, or platform-keyed object, see below)
   "postInstall": ["pnpm run format"], // commands run after a successful install
-  "nextSteps": ["pnpm start"], // extra lines in the final recap (a line may be {"module":…,"text":…})
+  "nextSteps": ["pnpm start"], // extra lines in the final recap (a line may be {"module":...,"text":...})
 }
 ```
 
@@ -135,7 +135,7 @@ A starter can declare parts of itself the user picks at generation time. `--modu
   "markers": [
     // marker pairs framing the parts of shared files (poms, YAML, docs) that belong to this
     // module. Each marker sits alone on its line. Module left out: the whole span is removed.
-    // Module kept: only the two marker lines are — a generated app never ships a marker.
+    // Module kept: only the two marker lines are removed, so a generated app never ships a marker.
     // `extensions` restricts the sweep; a pair found nowhere warns "template drift".
     { "extensions": [".xml", ".md"], "start": "<!-- module:schema -->", "end": "<!-- /module:schema -->" },
   ],
@@ -151,7 +151,7 @@ A starter can declare parts of itself the user picks at generation time. `--modu
 
 The `{{modules}}` token holds the included modules, required ones first, as a comma-separated list.
 
-`install` and each `postInstall` entry are either a shell string or an object keyed by Node's `process.platform` with a `default` fallback — for commands that have no single cross-platform spelling, like the Maven wrapper:
+`install` and each `postInstall` entry are either a shell string or an object keyed by Node's `process.platform` with a `default` fallback, for commands that have no single cross-platform spelling, like the Maven wrapper:
 
 ```jsonc
 "install": { "default": "./mvnw -ntp package", "win32": ".\\mvnw.cmd -ntp package" }
@@ -163,17 +163,17 @@ Spell Windows commands with an explicit `.\` prefix: environments that set `NoDe
 
 Files rendered over the generated app, overwriting existing files. The directory mirrors the app layout:
 
-- **Path tokens**: `__feature__` in a path segment becomes the feature name (any token works: `__projectName__`, …).
-- **Content tokens**: `{{token}}` placeholders, plain substitution — no conditional logic. Exact match only, so Angular's `{{ interpolation }}` (with spaces) is left untouched.
-- Binary extensions (png, ico, fonts…) are copied as-is.
+- **Path tokens**: `__feature__` in a path segment becomes the feature name (any token works: `__projectName__`, ...).
+- **Content tokens**: `{{token}}` placeholders, plain substitution, no conditional logic. Exact match only, so Angular's `{{ interpolation }}` (with spaces) is left untouched.
+- Binary extensions (png, ico, fonts...) are copied as-is.
 
-Available tokens: `projectName` (directory name), `appName`, `title`, `starterVersion` (from the template's package.json, when present) — plus, when the starter prompts for a feature: `feature`, `featurePascal`, `featureCamel`, `featureConst` (SNAKE_UPPER) — plus, when it prompts for a base package: `basePackage` (`com.acme.payments`) and `basePackagePath` (`com/acme/payments`; token values may contain `/`, so a single `__basePackagePath__` path segment expands to a nested directory) — plus, when it declares optional modules: `modules`.
+Available tokens: `projectName` (directory name), `appName`, `title`, `starterVersion` (from the template's package.json, when present), plus, when the starter prompts for a feature: `feature`, `featurePascal`, `featureCamel`, `featureConst` (SNAKE_UPPER), plus, when it prompts for a base package: `basePackage` (`com.acme.portfolio`) and `basePackagePath` (`com/acme/portfolio`; token values may contain `/`, so a single `__basePackagePath__` path segment expands to a nested directory), plus, when it declares optional modules: `modules`.
 
 Because template files contain tokens, they are not valid syntax: the starter must exclude `.generator/templates/` from its own formatters/linters (see the starter's `.prettierignore` and ESLint `globalIgnores`).
 
 ## Adding modules later
 
-A generation writes one extra file the starter never sees: `.starter-manifest.json`, recording the template, the tokens answered and the modules chosen. It is the only thing that makes `--add-modules` possible, and it is the reason generation otherwise leaves no trace of its own manifest — `.starter-manifest.json` describes the _generation_, not the _starter_, so unlike `generator.config.json`/`.generator/` it ships in the result.
+A generation writes one extra file the starter never sees: `.starter-manifest.json`, recording the template, the tokens answered and the modules chosen. It is the only thing that makes `--add-modules` possible, and it is the reason generation otherwise leaves no trace of its own manifest: `.starter-manifest.json` describes the _generation_, not the _starter_, so unlike `generator.config.json`/`.generator/` it ships in the result.
 
 ```bash
 starter-generator portfolio --starter java --base-package com.acme.portfolio --modules "" --yes
@@ -182,11 +182,11 @@ starter-generator portfolio --add-modules schema
 starter-generator portfolio --add-modules batch
 ```
 
-Each call re-fetches the starter (the _current_ version — a starter that evolved since the original generation is what gets diffed against, not a snapshot of what generated the app) and generates two throwaway reference trees with the application's exact identity: one with today's modules, one with those plus the requested ones. Diffing them tells the tool exactly what the new module(s) contribute, with no guessing about starter internals:
+Each call re-fetches the starter (the _current_ version: a starter that evolved since the original generation is what gets diffed against, not a snapshot of what generated the app) and generates two throwaway reference trees with the application's exact identity: one with today's modules, one with those plus the requested ones. Diffing them tells the tool exactly what the new module(s) contribute, with no guessing about starter internals:
 
-- **New files or directories** (the bulk of any module's footprint, by design — see a starter's own conventions on keeping a module's slice self-contained) are copied straight into the application; a path that already exists there is left untouched and reported, never overwritten.
-- **Shared files that only gained an inserted block** (a `<module>` line, a dependency, a YAML block) are patched in place, anchored on a short window of the surrounding unchanged lines — enough context that a single repeated closing tag (`</dependency>`, blank lines) is never mistaken for the insertion point.
-- **Anything that isn't a clean insertion** — the same shared file also changed in a way that has nothing to do with the new module (typically a "generated with these modules: …" summary line) — is reported with a compact diff instead of guessed at. A wrong guess here would corrupt a file the application may have long since diverged from the template in; a flagged TODO costs the user thirty seconds instead.
+- **New files or directories** (the bulk of any module's footprint, by design: see a starter's own conventions on keeping a module's slice self-contained) are copied straight into the application; a path that already exists there is left untouched and reported, never overwritten.
+- **Shared files that only gained an inserted block** (a `<module>` line, a dependency, a YAML block) are patched in place, anchored on a short window of the surrounding unchanged lines (enough context that a single repeated closing tag (`</dependency>`, blank lines) is never mistaken for the insertion point).
+- **Anything that is not a clean insertion** (the same shared file also changed in a way that has nothing to do with the new module, typically a "generated with these modules: ..." summary line) is reported with a compact diff instead of guessed at. A wrong guess here would corrupt a file the application may have long since diverged from the template in; a flagged TODO costs the user thirty seconds instead.
 
 `--add-modules` never touches git and never runs an install: it only changes files, so the result shows up in `git status`/`git diff` like any other edit, for the user to review and commit on their own terms. A module whose `requires` are not yet present, or one already part of the application, is a fatal error, same as at generation time.
 
@@ -197,11 +197,11 @@ Each call re-fetches the starter (the _current_ version — a starter that evolv
 
 ## Updating generated apps
 
-Generation is one-shot: each application lives its own life afterwards. To pick up starter improvements in general, follow the starter's changelog and apply the relevant changes manually — `--add-modules` (above) is the one exception, for adding a module the application didn't start with.
+Generation is one-shot: each application lives its own life afterwards. To pick up starter improvements in general, follow the starter's changelog and apply the relevant changes manually. `--add-modules` (above) is the one exception, for adding a module the application didn't start with.
 
 ## Requirements
 
-- Node ≥ 20.11
+- Node >= 20.11
 - git, plus whatever the starter's `install` command needs (pnpm for `web`/`ui`, a JDK 25 for `java`)
 
 ## Contributing

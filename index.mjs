@@ -1,53 +1,4 @@
 #!/usr/bin/env node
-/**
- * starter-generator
- *
- * Generates a new application from a manifest-driven starter template.
- * The generator itself knows nothing about any specific starter: each starter
- * repository describes itself through a `generator.config.json` manifest
- * (files to remove, renames, JSON patches, optional modules, which prompts it needs) and
- * `.generator/templates/` scaffold files rendered with `{{token}}` placeholders.
- *
- * Two modes:
- *
- *   Generate (default) —
- *   1. Pick a starter from the built-in registry (or --template <url|dir>).
- *   2. Fetch it (git clone, or copy of a local directory) and read its manifest.
- *   3. Ask the questions the starter declares (name, title, feature, modules, OpenAPI spec).
- *   4. Apply the manifest: remove -> rename -> jsonPatch -> replace -> replaceAll -> render
- *      templates -> resolve module markers. Optional modules the user left out contribute their
- *      own `whenAbsent` removals to the first step and their own scaffolds to the sixth.
- *   5. Write a small `.starter-manifest.json` recording the template, tokens and modules chosen,
- *      install dependencies and create the first git commit.
- *
- *   Add modules (--add-modules) —
- *   Adds optional modules to an application generated earlier. Re-fetches the starter fresh, then
- *   generates two throwaway reference trees with the SAME identity — one with the application's
- *   current modules, one with those plus the new ones — and applies exactly the difference to
- *   the real application: new files/directories are copied in; shared files (poms, YAML, docs)
- *   that only gained an inserted block are patched in place; anything this can't do safely
- *   (a shared file whose surrounding content also changed, not just gained an insertion) is
- *   listed for a manual look rather than guessed at. Never touches git or runs an install.
- *
- * Usage:
- *   starter-generator [directory] [options]
- *
- * Options:
- *   --starter <id>          Starter from the registry (e.g. "web", "ui", "java")
- *   --template <repo|dir>   Template git URL or local directory (overrides --starter)
- *   --ref <branch|tag>      Git ref to clone from the template repository
- *   --name <kebab-case>     Application name (default: directory name without the starter's suffix)
- *   --title <text>          Display title, used in the generated app's UI and README
- *   --feature <kebab-case>  Initial feature name, for starters that scaffold one
- *   --openapi <path|url>    OpenAPI spec, for starters that declare an openapiTarget
- *   --base-package <pkg>    Base package (e.g. com.acme.payments), for starters that prompt for one
- *   --modules <a,b>         Optional modules to include, for starters that declare some ("" for none)
- *   --skip-install          Do not run the starter's install command
- *   --skip-git              Do not initialize a git repository
- *   --yes                   Non-interactive: accept defaults for unanswered options
- *   --add-modules <a,b>     Add modules to the application at [directory] (generated earlier by
- *                           this tool); ignores every other generation option
- */
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
@@ -69,8 +20,6 @@ import { parseArgs } from 'node:util';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 
-// --- Registry of known starters ----------------------------------------------
-
 const REGISTRY = {
   web: {
     label: 'Angular web application (angular-starter-web)',
@@ -88,22 +37,12 @@ const REGISTRY = {
 
 const MANIFEST_FILE = 'generator.config.json';
 const TEMPLATES_DIR = '.generator';
-// Left behind in every generated app (never deleted): the small state `--add-modules` needs
-// later to know what it's building on top of. Unlike generator.config.json/.generator, which
-// describe the STARTER, this describes the GENERATION — so it belongs in the result.
 const STATE_FILE = '.starter-manifest.json';
 const SUPPORTED_SCHEMA = 1;
-// Build wrappers that must stay runnable on a Linux CI runner. Git on Windows does not track the
-// executable bit, so a template cloned or copied there yields mode 100644 and the generated
-// project's first CI run dies on `./mvnw: Permission denied`. A starter can name more files
-// through the manifest's optional `executable` array.
 const DEFAULT_EXECUTABLES = ['mvnw', 'gradlew'];
 const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const JAVA_PACKAGE = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9_]*)+$/;
-// Template files with these extensions are copied as-is, without token substitution.
 const BINARY_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.eot']);
-
-// --- Helpers -----------------------------------------------------------------
 
 const toPascalCase = (kebab) =>
   kebab
@@ -134,13 +73,8 @@ const checkCancel = (value) => {
   return value;
 };
 
-// git commands carry user-provided values (paths, refs): run them without a shell.
 const runGit = (gitArgs, cwd) => spawnSync('git', gitArgs, { cwd, stdio: 'pipe', encoding: 'utf8' });
 
-/**
- * Records the executable bit in the index for build wrappers, whatever the host filesystem said.
- * Runs after `git add`, since `update-index` only speaks about files already staged.
- */
 const markExecutables = (targetDir, manifest) => {
   for (const relative of [...DEFAULT_EXECUTABLES, ...(manifest.executable ?? [])]) {
     if (existsSync(path.join(targetDir, relative))) {
@@ -148,15 +82,11 @@ const markExecutables = (targetDir, manifest) => {
     }
   }
 };
-// Manifest commands are trusted shell strings from the starter (whose code we run anyway).
 const runCommand = (command, cwd) => spawnSync(command, { cwd, stdio: 'inherit', shell: true });
 
-// A manifest command is either a string or an object keyed by process.platform with a
-// `default` fallback (e.g. {"default": "./mvnw ...", "win32": "mvnw.cmd ..."}).
 const resolveCommand = (command) =>
   typeof command === 'string' ? command : (command[process.platform] ?? command.default);
 
-/** Replaces every `{{token}}` in `text`; warns once per unknown token. */
 const substituteTokens = (text, tokens, context) =>
   text.replace(/\{\{([a-zA-Z]+)\}\}/g, (match, name) => {
     if (tokens[name] === undefined) {
@@ -166,7 +96,6 @@ const substituteTokens = (text, tokens, context) =>
     return tokens[name];
   });
 
-/** Replaces every `__token__` in a relative path; unknown tokens are fatal. */
 const substitutePathTokens = (relativePath, tokens) =>
   relativePath.replace(/__([a-zA-Z]+)__/g, (match, name) => {
     if (tokens[name] === undefined) fail(`Unknown path token ${match} in template path ${relativePath}.`);
@@ -192,7 +121,6 @@ const readManifest = (root, templateLabel) => {
   return { manifest };
 };
 
-/** Required modules are informational (never removable); optional ones the caller has chosen. */
 const deriveModuleSets = (manifest, selectedModules) => {
   const requiredModules = manifest.modules?.required ?? [];
   const optionalModules = manifest.modules?.optional ?? [];
@@ -204,9 +132,6 @@ const deriveModuleSets = (manifest, selectedModules) => {
   return { requiredModules, optionalModules, absentModules, includedModules };
 };
 
-// Tree-wide literal replacement, for identities that appear in many files (Maven artifactIds,
-// Java package/import statements). Binary files, .git, the manifest and the scaffold templates
-// (whose {{tokens}} must survive until render) are never touched.
 const collectReplaceAllFiles = (dir, files = []) => {
   for (const entry of readdirSync(dir)) {
     if (entry === '.git' || entry === TEMPLATES_DIR || entry === MANIFEST_FILE || entry === STATE_FILE) continue;
@@ -220,8 +145,6 @@ const collectReplaceAllFiles = (dir, files = []) => {
   return files;
 };
 
-/** Every file under `dir`, as paths relative to it (posix separators). Used by --add-modules to
- * diff two generated trees; unlike collectReplaceAllFiles this includes binary files. */
 const collectAllFiles = (dir, root = dir, files = []) => {
   for (const entry of readdirSync(dir)) {
     const entryPath = path.join(dir, entry);
@@ -234,27 +157,14 @@ const collectAllFiles = (dir, root = dir, files = []) => {
   return files;
 };
 
-/**
- * Applies a starter's manifest (minus the questions, which the caller has already answered into
- * `tokens`/`selectedModules`) to `targetDir`: remove -> rename -> jsonPatch -> replace ->
- * replaceAll -> render templates -> resolve module markers -> wire the OpenAPI spec -> delete the
- * manifest and templates (they describe the starter, not the result). Shared by real generation
- * and by --add-modules's two throwaway reference trees.
- */
 const applyManifest = ({ targetDir, manifest, tokens, selectedModules, openapi }) => {
   const { optionalModules, absentModules, includedModules } = deriveModuleSets(manifest, selectedModules);
-  // Any manifest entry may carry a `module` field: it then applies only when that module made it
-  // into the generated application. Without one, the entry always applies.
   const appliesHere = (entry) => !entry.module || includedModules.includes(entry.module);
 
-  // Both lists use literal repository paths: they run before `rename` renames anything.
   for (const relative of [...(manifest.remove ?? []), ...absentModules.flatMap((m) => m.whenAbsent?.remove ?? [])]) {
     rmSync(path.join(targetDir, relative), { recursive: true, force: true });
   }
 
-  // Renames apply sequentially: each `from` sees the tree as left by the previous entries.
-  // Both sides are token-substituted, so module directories and package roots can take the
-  // application's name (`remove` above intentionally still uses literal repository paths).
   for (const rename of manifest.rename ?? []) {
     if (!appliesHere(rename)) continue;
     const context = `${MANIFEST_FILE} rename`;
@@ -273,7 +183,6 @@ const applyManifest = ({ targetDir, manifest, tokens, selectedModules, openapi }
     }
     mkdirSync(path.dirname(toPath), { recursive: true });
     renameSync(fromPath, toPath);
-    // Prune directories the move left empty (e.g. com/example/ after a package root rename).
     for (let parent = path.dirname(fromPath); parent !== targetDir; parent = path.dirname(parent)) {
       if (!existsSync(parent) || readdirSync(parent).length > 0) break;
       rmSync(parent, { recursive: true });
@@ -289,7 +198,6 @@ const applyManifest = ({ targetDir, manifest, tokens, selectedModules, openapi }
     return value;
   };
 
-  // From here on, every path is token-substituted: `rename` above has already moved the tree.
   for (const patch of manifest.jsonPatch ?? []) {
     if (!appliesHere(patch)) continue;
     const file = substituteTokens(patch.file, tokens, `${MANIFEST_FILE} jsonPatch`);
@@ -347,9 +255,6 @@ const applyManifest = ({ targetDir, manifest, tokens, selectedModules, openapi }
     }
   }
 
-  // Render a scaffold tree over the target, overwriting existing files. `.generator/templates` is
-  // always rendered; an absent module may declare a second tree of its own, so the variant
-  // without it gets files that cannot be obtained by deletion alone.
   const renderTemplateTree = (root) => {
     const walk = (dir) => {
       for (const entry of readdirSync(dir)) {
@@ -383,10 +288,6 @@ const applyManifest = ({ targetDir, manifest, tokens, selectedModules, openapi }
     }
   }
 
-  // An optional module frames the parts of shared files (poms, YAML, docs) that belong to it with
-  // a pair of markers, each alone on its line. Left out, the whole span goes; kept, only the two
-  // marker lines go — a generated application never ships a generator comment either way. Runs
-  // after the templates, so their own marked sections are handled too.
   const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const LINE_SPACE = '[^\\S\\r\\n]*';
   const markerPattern = (marker, present) =>
@@ -418,30 +319,23 @@ const applyManifest = ({ targetDir, manifest, tokens, selectedModules, openapi }
     }
   }
 
-  // Wire the provided OpenAPI spec, if any.
   if (openapi) {
     const openapiTarget = path.join(
       targetDir,
       substituteTokens(manifest.openapiTarget, tokens, `${MANIFEST_FILE} openapiTarget`),
     );
     mkdirSync(path.dirname(openapiTarget), { recursive: true });
-    if (/^https?:\/\//.test(openapi)) {
-      // Resolved by the caller (fetch is async); see wireOpenapi below for the real generate flow.
-    } else {
+    if (!/^https?:\/\//.test(openapi)) {
       const openapiSource = path.resolve(openapi);
       if (!existsSync(openapiSource)) fail(`OpenAPI spec not found: ${openapiSource}`);
       cpSync(openapiSource, openapiTarget);
     }
   }
 
-  // The manifest and templates describe the starter, not the generated app.
   rmSync(path.join(targetDir, MANIFEST_FILE), { force: true });
   rmSync(path.join(targetDir, TEMPLATES_DIR), { recursive: true, force: true });
 };
 
-/** Fetches a remote OpenAPI spec — kept separate from applyManifest because it is the only
- * async step in an otherwise synchronous pipeline. No-op for a local path (applyManifest copies
- * it directly) or when there is nothing to fetch. */
 const wireRemoteOpenapi = async (targetDir, manifest, tokens, openapi) => {
   if (!openapi || !/^https?:\/\//.test(openapi)) return;
   const openapiTarget = path.join(
@@ -454,9 +348,6 @@ const wireRemoteOpenapi = async (targetDir, manifest, tokens, openapi) => {
   writeFileSync(openapiTarget, await response.text());
 };
 
-// --- Line diffing, for --add-modules -----------------------------------------
-
-/** A minimal LCS-based line diff: the ops that turn `baseLines` into `targetLines`. */
 const diffLines = (baseLines, targetLines) => {
   const n = baseLines.length;
   const m = targetLines.length;
@@ -495,15 +386,8 @@ const diffLines = (baseLines, targetLines) => {
 
 const isPureInsertion = (ops) => !ops.some((op) => op.type === 'remove');
 
-// A single preceding line ("    </dependency>", "") repeats constantly in formatted XML/YAML —
-// anchoring on one line alone would frequently match nowhere near the real insertion point. A
-// short window of consecutive lines is unique in practice (it only takes one distinctive line —
-// an artifactId, a property name — inside the window).
 const ANCHOR_WINDOW = 3;
 
-/** Groups consecutive `add` ops into hunks anchored on the (up to) last `ANCHOR_WINDOW` `context`
- * lines before them (an empty anchor means "insert at the very top"). Only meaningful for a
- * pure-insertion diff. */
 const insertionHunks = (ops) => {
   const hunks = [];
   let contextWindow = [];
@@ -523,9 +407,6 @@ const insertionHunks = (ops) => {
   return hunks;
 };
 
-/** Splices a hunk into `targetLines` right after its anchor sequence — found by exact,
- * contiguous match, which must be unique (an anchor seen twice, or not at all, is reported
- * unapplied rather than guessed). */
 const applyHunk = (targetLines, hunk) => {
   const { anchor, lines } = hunk;
   if (anchor.length === 0) {
@@ -550,8 +431,6 @@ const formatDiffPreview = (ops, maxLines = 12) => {
   const more = changed.length > maxLines ? [`  … ${changed.length - maxLines} more line(s)`] : [];
   return [...preview, ...more].join('\n');
 };
-
-// --- 1. Arguments ------------------------------------------------------------
 
 const { values: args, positionals } = parseArgs({
   allowPositionals: true,
@@ -580,8 +459,6 @@ if (args.help) {
 }
 
 const interactive = stdin.isTTY && !args.yes;
-
-// --- Generate: pick a starter, fetch it, ask questions, apply, bootstrap -----
 
 async function runGenerate() {
   p.intro(pc.bgCyan(pc.black(' starter-generator ')));
@@ -615,7 +492,7 @@ async function runGenerate() {
     directory = checkCancel(
       await p.text({
         message: 'Where should the application be created?',
-        placeholder: './virement-web',
+        placeholder: './catalog-web',
         validate: (value) => (value.trim() === '' ? 'A directory is required.' : undefined),
       }),
     );
@@ -630,7 +507,6 @@ async function runGenerate() {
   let manifest;
 
   if (localTemplate) {
-    // Read the manifest from the source so copyIgnore applies to the copy itself.
     const { manifest: sourceManifest, error } = readManifest(localTemplate, template);
     if (error) fail(error);
     manifest = sourceManifest;
@@ -670,8 +546,6 @@ async function runGenerate() {
   const starterVersion = existsSync(templatePackageJsonPath)
     ? (JSON.parse(readFileSync(templatePackageJsonPath, 'utf8')).version ?? '')
     : '';
-
-  // --- Answers (flags first, prompts the starter declares for the rest) -----
 
   const defaultName =
     manifest.nameSuffix && projectName.endsWith(manifest.nameSuffix)
@@ -726,7 +600,7 @@ async function runGenerate() {
     if (interactive && !args['base-package']) {
       basePackage = checkCancel(
         await p.text({
-          message: 'Base package (e.g. com.acme.payments)?',
+          message: 'Base package (e.g. com.acme.portfolio)?',
           initialValue: basePackage,
           validate: (value) =>
             JAVA_PACKAGE.test(value) ? undefined : 'Use a dotted lowercase package: at least two segments.',
@@ -735,11 +609,9 @@ async function runGenerate() {
     }
   }
   if (basePackage !== undefined && !JAVA_PACKAGE.test(basePackage)) {
-    fail(`Invalid base package "${basePackage}": use a dotted lowercase package (e.g. com.acme.payments).`);
+    fail(`Invalid base package "${basePackage}": use a dotted lowercase package (e.g. com.acme.portfolio).`);
   }
 
-  // Optional modules: the starter declares which parts of itself can be left out, and what to
-  // remove when they are. Required modules are informational — they are never removable.
   const { requiredModules, optionalModules } = deriveModuleSets(manifest, new Set());
   let selectedModules = new Set();
   if (optionalModules.length > 0) {
@@ -771,7 +643,6 @@ async function runGenerate() {
     } else {
       selectedModules = new Set(optionalModules.filter((module) => module.default).map((module) => module.id));
     }
-    // Dependencies between optional modules are declared by the starter, never inferred here.
     for (const module of optionalModules) {
       if (!selectedModules.has(module.id)) continue;
       for (const dependency of module.requires ?? []) {
@@ -806,8 +677,6 @@ async function runGenerate() {
     install = checkCancel(await p.confirm({ message: 'Install dependencies?', initialValue: true }));
   }
 
-  // --- Tokens ---------------------------------------------------------------
-
   const tokens = {
     projectName,
     appName,
@@ -826,21 +695,16 @@ async function runGenerate() {
     ...(includedModules.length > 0 && { modules: includedModules.join(', ') }),
   };
 
-  // --- Apply the manifest ---------------------------------------------------
-
   spinner.start('Applying the starter manifest');
   applyManifest({ targetDir, manifest, tokens, selectedModules, openapi });
   await wireRemoteOpenapi(targetDir, manifest, tokens, openapi);
   spinner.stop('Starter manifest applied.');
 
-  // What this generation was, for a future --add-modules to build on.
   writeFileSync(
     path.join(targetDir, STATE_FILE),
     `${JSON.stringify(
       {
         starter: starterName,
-        // Resolved to an absolute path for a local template dir, so --add-modules finds it again
-        // regardless of the working directory it's run from later.
         template: localTemplate ?? template,
         ref: args.ref ?? null,
         modules: includedModules,
@@ -856,8 +720,6 @@ async function runGenerate() {
       2,
     )}\n`,
   );
-
-  // --- git init, install, first commit --------------------------------------
 
   if (!args['skip-git']) {
     spinner.start('Initializing git repository');
@@ -885,8 +747,6 @@ async function runGenerate() {
     spinner.start('Creating the initial commit');
     runGit(['add', '-A'], targetDir);
     markExecutables(targetDir, manifest);
-    // The commit is machine-generated and the project freshly formatted:
-    // hooks (lint-staged, commitlint) kick in from the first human commit.
     const versionSuffix = starterVersion ? ` v${starterVersion}` : '';
     const commit = runGit(
       ['commit', '--no-verify', '-m', `chore: bootstrap ${projectName} from ${starterName}${versionSuffix}`],
@@ -895,14 +755,10 @@ async function runGenerate() {
     spinner.stop(commit.status === 0 ? 'Initial commit created.' : 'Initial commit failed (skipped).');
   }
 
-  // --- Recap -----------------------------------------------------------------
-
   const appliesHere = (entry) => !entry.module || includedModules.includes(entry.module);
   const nextSteps = [
     `cd ${path.relative(process.cwd(), targetDir) || '.'}`,
     ...(installOk || !installCommand ? [] : [installCommand]),
-    // A step can be tied to a module: `{ "module": "schema", "text": "..." }` shows only when that
-    // module made it into the generated application.
     ...(manifest.nextSteps ?? [])
       .filter((step) => typeof step === 'string' || appliesHere(step))
       .map((step) =>
@@ -912,8 +768,6 @@ async function runGenerate() {
   p.note(nextSteps.join('\n'), 'Next steps');
   p.outro(`${pc.green('Done!')} ${title} is ready in ${pc.cyan(targetDir)}`);
 }
-
-// --- Add modules: extend an application generated earlier --------------------
 
 async function runAddModules() {
   p.intro(pc.bgCyan(pc.black(' starter-generator: add modules ')));
@@ -943,13 +797,7 @@ async function runAddModules() {
   spinner.start(`Fetching ${state.starter ?? state.template} to read its current manifest`);
   const scratchRoot = mkdtempSync(path.join(tmpdir(), 'starter-generator-add-'));
   const templateClone = path.join(scratchRoot, 'template');
-  // `state.template` is either a git URL or an absolute local directory (runGenerate resolves it
-  // before recording it) — same detection as the initial generation, so local-checkout workflows
-  // ("offline / testing starter changes") keep working for --add-modules too.
   if (existsSync(state.template)) {
-    // Read the manifest from the source so its own copyIgnore applies to the copy itself —
-    // otherwise a local checkout's build output (target/, .idea/, …) rides along into both
-    // reference trees and can surface as a bogus diff.
     const { manifest: sourceManifest, error: sourceError } = readManifest(state.template, state.template);
     if (sourceError) fail(sourceError);
     const copyIgnore = ['.git', ...(sourceManifest.copyIgnore ?? [])];
@@ -1043,7 +891,6 @@ async function runAddModules() {
     const isBinary = BINARY_EXTENSIONS.has(path.extname(relative).toLowerCase());
 
     if (!filesBefore.has(relative)) {
-      // Entirely new — belongs to one of the modules just added.
       if (existsSync(targetPath)) {
         skipped.push(relative);
         continue;
@@ -1054,11 +901,11 @@ async function runAddModules() {
       continue;
     }
 
-    if (isBinary) continue; // Present in both, binary: nothing sensible to diff or patch.
+    if (isBinary) continue;
 
     const beforeContent = readFileSync(path.join(before, relative), 'utf8');
     const afterContent = readFileSync(afterPath, 'utf8');
-    if (beforeContent === afterContent) continue; // Untouched by the new module(s).
+    if (beforeContent === afterContent) continue;
 
     if (!existsSync(targetPath)) {
       manual.push({ file: relative, note: 'expected in the application but missing — added fresh', preview: null });
@@ -1069,9 +916,6 @@ async function runAddModules() {
 
     const ops = diffLines(beforeContent.split('\n'), afterContent.split('\n'));
     if (!isPureInsertion(ops)) {
-      // Something besides the new module also changed this file's surrounding content between
-      // the two reference trees (typically a "with these modules: ..." summary line) — safer to
-      // point it out than to guess where a patch belongs.
       manual.push({
         file: relative,
         note: "isn't a clean insertion — review and merge by hand",

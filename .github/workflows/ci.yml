@@ -52,7 +52,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/JoanRoucoux/angular-starter-ui "$RUNNER_TEMP/angular-starter-ui"
           node index.mjs "$RUNNER_TEMP/smoke-ui" --template "$RUNNER_TEMP/angular-starter-ui" --title "Smoke" --skip-install --skip-git --yes
-          test -f "$RUNNER_TEMP/smoke-ui/projects/ui/src/lib/button/button.ts"
+          test -f "$RUNNER_TEMP/smoke-ui/projects/ui/button/button.ts"
           test ! -e "$RUNNER_TEMP/smoke-ui/generator.config.json"
           test ! -e "$RUNNER_TEMP/smoke-ui/LICENSE"
           grep -q '"name": "smoke-ui"' "$RUNNER_TEMP/smoke-ui/projects/ui/package.json"

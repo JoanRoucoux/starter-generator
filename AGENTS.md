@@ -40,6 +40,7 @@ Before considering a change done: generate one app per registered starter from a
 - `git` commands run **without a shell** (their arguments contain user input: paths, refs). Manifest commands (`install`, `postInstall`) run **through the shell**: they are trusted strings from the starter, whose code we execute anyway.
 - The initial commit stages `mvnw`/`gradlew` (plus any manifest `executable` entry) with `git update-index --chmod=+x`. Git on Windows does not track the executable bit, so without this a generated project's very first CI run fails with `./mvnw: Permission denied`, a bug that surfaces only on Linux, long after generation.
 - Every drift the engine can detect (missing `replace` pattern, missing `jsonPatch` target, unknown `{{token}}`) warns with the words "template drift" rather than failing: generation should survive minor starter evolution, visibly.
+- Dependabot runs monthly with a 7-day cooldown. Minor and patch updates merge themselves through `.github/workflows/dependabot-auto-merge.yml` once the required checks pass, and majors are reviewed by hand. The README names major versions only, since the exact ones live in the manifests Dependabot bumps.
 
 ## Gotchas
 
@@ -54,3 +55,4 @@ Before considering a change done: generate one app per registered starter from a
 - `applyManifest` only copies a local `--openapi` spec; a remote one is fetched by the caller (fetch is async) before `applyManifest` runs, so the `https?://` branch there is deliberately a no-op.
 - A local template is copied through the manifest's own `copyIgnore`, so build output never leaks into a generated tree or a `--add-modules` reference tree.
 - `{{title}}` is substituted raw. Any code, JSON or HTML context must use `{{titleJs}}`, `{{titleJson}}` or `{{titleHtml}}`, otherwise an apostrophe, a double quote or `&` in the title breaks the generated app.
+- A merge made with `GITHUB_TOKEN` triggers no `push` workflow, which is why `dependabot-auto-merge.yml` uses the `DEPENDABOT_MERGE_TOKEN` secret when it exists.

@@ -1,22 +1,51 @@
 <img src=".github/assets/banner.png" alt="Starter Generator: generate new applications from starter templates" />
 
+[![CI](https://github.com/JoanRoucoux/starter-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/JoanRoucoux/starter-generator/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/JoanRoucoux/starter-generator)](https://github.com/JoanRoucoux/starter-generator/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Generate new applications from manifest-driven starter templates.
 
+The generator itself knows nothing about any specific starter: each starter repository **describes itself** through a `generator.config.json` manifest and `.generator/templates/` scaffold files. The generator is a generic engine that fetches a starter, applies its manifest, and bootstraps the result (git, install, first commit).
+
+## The starters
+
+| Repository                                                                | What it generates                                         |
+| ------------------------------------------------------------------------- | --------------------------------------------------------- |
+| [angular-starter-web](https://github.com/JoanRoucoux/angular-starter-web) | An Angular web application connected to a backend         |
+| [angular-starter-ui](https://github.com/JoanRoucoux/angular-starter-ui)   | An Angular design system: component library and Storybook |
+| [java-starter](https://github.com/JoanRoucoux/java-starter)               | A Spring Boot backend in hexagonal architecture           |
+
+The generator fetches these starters: create an application from any of them with `starter-generator`.
+
+## Tech stack
+
+| Tool                                                                                                                  | Role                                                                                |
+| --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [Node.js](https://nodejs.org)                                                                                         | Runtime: a single-file ESM CLI ([index.mjs](index.mjs)), no build step              |
+| [@clack/prompts](https://github.com/bombshell-dev/clack) + [picocolors](https://github.com/alexeyraspopov/picocolors) | Interactive prompts and terminal colors (the two runtime dependencies)              |
+| [git](https://git-scm.com)                                                                                            | Fetches the starter (`git clone --depth 1`) and bootstraps the generated repository |
+| [ESLint](https://eslint.org)                                                                                          | Lint                                                                                |
+| [Prettier](https://prettier.io)                                                                                       | Code formatting                                                                     |
+| [Husky](https://typicode.github.io/husky) + [lint-staged](https://github.com/lint-staged/lint-staged)                 | Git hooks (format + lint on commit)                                                 |
+| [commitlint](https://commitlint.js.org)                                                                               | Commit message validation (Conventional Commits)                                    |
+| [GitHub Actions](https://github.com/features/actions)                                                                 | CI: format, lint, smoke tests generating from the starters                          |
+
+## Getting started
+
+Requirements:
+
+- Node >= 20.11
+- git, plus whatever the starter's `install` command needs (pnpm for `web`/`ui`, a JDK 25 for `java`)
+
 ```bash
-starter-generator catalog-web
+pnpm install                                         # installs the two dependencies
+node index.mjs portfolio-web --starter web           # generates ./portfolio-web
 ```
 
-The generator itself knows nothing about any specific starter: each starter repository **describes itself** through a `generator.config.json` manifest and `.generator/templates/` scaffold files. The generator is a generic engine that fetches a starter, applies its manifest, and bootstraps the result (git, install, first commit). Adding a new starter (e.g. a Java API starter) means adding a manifest to that repository and one line to the registry: no engine changes.
+The examples below call `starter-generator`, the name of the package's executable. Without installing it, run it from a clone: `node index.mjs catalog-web`.
 
-## Registered starters
-
-| Id     | Starter                                                                   | Generates                                       |
-| ------ | ------------------------------------------------------------------------- | ----------------------------------------------- |
-| `web`  | [angular-starter-web](https://github.com/JoanRoucoux/angular-starter-web) | An Angular web application                      |
-| `ui`   | [angular-starter-ui](https://github.com/JoanRoucoux/angular-starter-ui)   | An Angular design system (library + Storybook)  |
-| `java` | [java-starter](https://github.com/JoanRoucoux/java-starter)               | A Spring Boot backend in hexagonal architecture |
-
-## Usage
+### Commands
 
 ```bash
 starter-generator [directory] [options]
@@ -59,8 +88,6 @@ starter-generator portfolio --starter java --base-package com.acme.portfolio --m
 starter-generator catalog-web --template git@git.example.com:frontend/angular-starter-web.git
 starter-generator catalog-web --template ../angular-starter-web
 ```
-
-Without publishing to a registry, run it directly: `node starter-generator/index.mjs catalog-web`.
 
 ## How a generation works
 
@@ -193,14 +220,18 @@ Each call re-fetches the starter (the _current_ version: a starter that evolved 
 1. In the starter repository: add `generator.config.json` (see specification) and, if needed, `.generator/templates/`.
 2. Here: add one entry to `REGISTRY` in [index.mjs](index.mjs).
 
+The registered ids, accepted by `--starter`, are `web` (angular-starter-web), `ui` (angular-starter-ui) and `java` (java-starter).
+
 ## Updating generated apps
 
 Generation is one-shot: each application lives its own life afterwards. To pick up starter improvements in general, follow the starter's changelog and apply the relevant changes manually. `--add-modules` (above) is the one exception, for adding a module the application didn't start with.
 
-## Requirements
+## Quality and conventions
 
-- Node >= 20.11
-- git, plus whatever the starter's `install` command needs (pnpm for `web`/`ui`, a JDK 25 for `java`)
+- **On commit**: lint-staged formats and lints the staged files; commitlint enforces [Conventional Commits](https://www.conventionalcommits.org) (`feat: ...`, `fix: ...`, ...).
+- **In CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): format check, lint, then smoke tests that generate an app from [angular-starter-web](https://github.com/JoanRoucoux/angular-starter-web) and [angular-starter-ui](https://github.com/JoanRoucoux/angular-starter-ui) and check that a template without a manifest fails cleanly. There is no unit test suite: see [AGENTS.md](AGENTS.md) for how a change is verified.
+- **Code conventions**: everything is written in English; keep it dependency-light (prefer `node:` builtins). The full list lives in [AGENTS.md](AGENTS.md).
+- **Config files** use ESM `.mjs`: [eslint.config.mjs](eslint.config.mjs), [prettier.config.mjs](prettier.config.mjs), [commitlint.config.mjs](commitlint.config.mjs).
 
 ## Contributing
 

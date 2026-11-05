@@ -36,11 +36,11 @@ The generator fetches these starters: create an application from any of them wit
 Requirements:
 
 - Node >= 20.11
-- git, plus whatever the starter's `install` command needs (pnpm for `web`/`ui`, a JDK 25 for `java`)
+- git, plus whatever the starter's `install` command needs (pnpm for `angular-web`/`angular-ui`, a JDK 25 for `java`)
 
 ```bash
 pnpm install                                         # installs the two dependencies
-node index.mjs portfolio-web --starter web           # generates ./portfolio-web
+node index.mjs portfolio-web --starter angular-web           # generates ./portfolio-web
 ```
 
 The examples below call `starter-generator`, the name of the package's executable. Without installing it, run it from a clone: `node index.mjs catalog-web`.
@@ -74,7 +74,7 @@ starter-generator [directory] [options]
 starter-generator
 
 # Fully scripted
-starter-generator portfolio-web --starter web --name portfolio --title "Portfolio" \
+starter-generator portfolio-web --starter angular-web --name portfolio --title "Portfolio" \
   --openapi ../specs/portfolio-api.yaml --yes
 
 # Spring Boot backend behind that frontend, same OpenAPI contract, database and batch included
@@ -220,7 +220,7 @@ Each call re-fetches the starter (the _current_ version: a starter that evolved 
 1. In the starter repository: add `generator.config.json` (see specification) and, if needed, `.generator/templates/`.
 2. Here: add one entry to `REGISTRY` in [index.mjs](index.mjs).
 
-The registered ids, accepted by `--starter`, are `web` (angular-starter-web), `ui` (angular-starter-ui) and `java` (java-starter).
+The registered ids, accepted by `--starter`, are `angular-web` (angular-starter-web), `angular-ui` (angular-starter-ui) and `java` (java-starter).
 
 ## Updating generated apps
 

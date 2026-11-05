@@ -21,11 +21,11 @@ import * as p from '@clack/prompts';
 import pc from 'picocolors';
 
 const REGISTRY = {
-  web: {
+  'angular-web': {
     label: 'Angular web application (angular-starter-web)',
     template: 'https://github.com/JoanRoucoux/angular-starter-web.git',
   },
-  ui: {
+  'angular-ui': {
     label: 'Angular design system (angular-starter-ui)',
     template: 'https://github.com/JoanRoucoux/angular-starter-ui.git',
   },

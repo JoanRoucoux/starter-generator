@@ -29,6 +29,10 @@ const REGISTRY = {
     label: 'Angular design system (angular-starter-ui)',
     template: 'https://github.com/JoanRoucoux/angular-starter-ui.git',
   },
+  'react-web': {
+    label: 'React web application (react-starter-web)',
+    template: 'https://github.com/JoanRoucoux/react-starter-web.git',
+  },
   java: {
     label: 'Spring Boot backend, hexagonal architecture (java-starter)',
     template: 'https://github.com/JoanRoucoux/java-starter.git',

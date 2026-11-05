@@ -14,6 +14,7 @@ The generator itself knows nothing about any specific starter: each starter repo
 | ------------------------------------------------------------------------- | --------------------------------------------------------- |
 | [angular-starter-web](https://github.com/JoanRoucoux/angular-starter-web) | An Angular web application connected to a backend         |
 | [angular-starter-ui](https://github.com/JoanRoucoux/angular-starter-ui)   | An Angular design system: component library and Storybook |
+| [react-starter-web](https://github.com/JoanRoucoux/react-starter-web)     | A React web application connected to a backend            |
 | [java-starter](https://github.com/JoanRoucoux/java-starter)               | A Spring Boot backend in hexagonal architecture           |
 
 The generator fetches these starters: create an application from any of them with `starter-generator`.
@@ -36,7 +37,7 @@ The generator fetches these starters: create an application from any of them wit
 Requirements:
 
 - Node >= 20.11
-- git, plus whatever the starter's `install` command needs (pnpm for `angular-web`/`angular-ui`, a JDK 25 for `java`)
+- git, plus whatever the starter's `install` command needs (pnpm for `angular-web`/`angular-ui`/`react-web`, a JDK 25 for `java`)
 
 ```bash
 pnpm install                                         # installs the two dependencies
@@ -220,7 +221,7 @@ Each call re-fetches the starter (the _current_ version: a starter that evolved 
 1. In the starter repository: add `generator.config.json` (see specification) and, if needed, `.generator/templates/`.
 2. Here: add one entry to `REGISTRY` in [index.mjs](index.mjs).
 
-The registered ids, accepted by `--starter`, are `angular-web` (angular-starter-web), `angular-ui` (angular-starter-ui) and `java` (java-starter).
+The registered ids, accepted by `--starter`, are `angular-web` (angular-starter-web), `angular-ui` (angular-starter-ui), `react-web` (react-starter-web) and `java` (java-starter).
 
 ## Updating generated apps
 
@@ -229,7 +230,7 @@ Generation is one-shot: each application lives its own life afterwards. To pick 
 ## Quality and conventions
 
 - **On commit**: lint-staged formats and lints the staged files; commitlint enforces [Conventional Commits](https://www.conventionalcommits.org) (`feat: ...`, `fix: ...`, ...).
-- **In CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): format check, lint, then smoke tests that generate an app from [angular-starter-web](https://github.com/JoanRoucoux/angular-starter-web) and [angular-starter-ui](https://github.com/JoanRoucoux/angular-starter-ui) and check that a template without a manifest fails cleanly. There is no unit test suite: see [AGENTS.md](AGENTS.md) for how a change is verified.
+- **In CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): format check, lint, then smoke tests that generate an app from [angular-starter-web](https://github.com/JoanRoucoux/angular-starter-web), [angular-starter-ui](https://github.com/JoanRoucoux/angular-starter-ui) and [react-starter-web](https://github.com/JoanRoucoux/react-starter-web) and check that a template without a manifest fails cleanly. There is no unit test suite: see [AGENTS.md](AGENTS.md) for how a change is verified.
 - **Code conventions**: everything is written in English; keep it dependency-light (prefer `node:` builtins). The full list lives in [AGENTS.md](AGENTS.md).
 - **Config files** use ESM `.mjs`: [eslint.config.mjs](eslint.config.mjs), [prettier.config.mjs](prettier.config.mjs), [commitlint.config.mjs](commitlint.config.mjs).
 

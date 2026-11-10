@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0](https://github.com/JoanRoucoux/starter-generator/compare/v1.2.0...v2.0.0) (2026-11-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* the starter ids web and ui are now angular-web and angular-ui.
+
+### Features
+
+* name each starter id after its framework ([#36](https://github.com/JoanRoucoux/starter-generator/issues/36)) ([88b6c71](https://github.com/JoanRoucoux/starter-generator/commit/88b6c715e7b98315581b661e298771d7c36799c5))
+* register the React starter as react-web ([#38](https://github.com/JoanRoucoux/starter-generator/issues/38)) ([b20ba3d](https://github.com/JoanRoucoux/starter-generator/commit/b20ba3dc0ec3ec8e02cccc121fec6086f1b28a59))
+
 ## [1.2.0](https://github.com/JoanRoucoux/starter-generator/compare/v1.1.1...v1.2.0) (2026-10-22)
 
 
